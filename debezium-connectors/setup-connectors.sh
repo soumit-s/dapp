@@ -5,6 +5,7 @@ CONNECTOR_DIR="./connectors"
 
 CONNECTOR_FILES=(
   "stores-connector.json"
+  "products-connector.json"
 )
 
 echo "Starting connector registration..."

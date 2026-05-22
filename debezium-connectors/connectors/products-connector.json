@@ -1,24 +1,24 @@
 {
-  "name": "store-outbox-connector",
+  "name": "product-outbox-connector",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
 
-    "database.hostname": "dapp-store-service-db",
+    "database.hostname": "dapp-product-service-db",
     "database.port": "5432",
     "database.user": "postgres",
     "database.password": "postgres",
-    "database.dbname": "dapp_store_service",
+    "database.dbname": "dapp_product_service",
 
     "table.include.list": "public.outbox_events",
 
-    "topic.prefix": "dapp_store",
+    "topic.prefix": "dapp_product",
     "plugin.name": "pgoutput",
 
-    "slot.name": "dapp_store_slot",
-    "publication.name": "dapp_store_publication",
+    "slot.name": "dapp_product_slot",
+    "publication.name": "dapp_product_publication",
 
     "database.history.kafka.bootstrap.servers": "dapp-kafka:9092",
-    "database.history.kafka.topic": "schema-changes.dapp-store",
+    "database.history.kafka.topic": "schema-changes.dapp-product",
 
     "tombstones.on.delete": "false",
 
