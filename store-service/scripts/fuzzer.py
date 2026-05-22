@@ -1,11 +1,13 @@
 import json
 import asyncio
+from sqlalchemy import text
 from dotenv import load_dotenv
 load_dotenv()
 
 from src.storeservice.services import StoreService
 from src.storeservice.models import CreateStoreDTO
-from src.storeservice.config import Config, load_config
+from src.storeservice.schema import Base 
+from src.storeservice.config import load_config
 from src.storeservice.db import DB
 
 class Fuzzer:
@@ -23,6 +25,9 @@ class Fuzzer:
 async def main():
     config  = load_config()
     db = DB(config.database_url)
+    async with db.get_async_engine().begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+        await conn.run_sync(Base.metadata.create_all)
     session_factory = db.get_async_session_factory()
     async with session_factory() as session:
         store_service = StoreService(session)
