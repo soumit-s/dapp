@@ -1,0 +1,171 @@
+services:
+  dapp-product-service:
+    build:
+      context: ./product-service
+      dockerfile: api.Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - MODE=development
+    depends_on:
+      - dapp-product-service-db
+
+  dapp-product-service-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dapp_product_service
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=4
+      -c max_replication_slots=4
+
+  dapp-product-fuzzer:
+    container_name: dapp-product-fuzzer
+    build:
+      context: ./product-service
+      dockerfile: fuzzer.Dockerfile
+    depends_on:
+      - dapp-product-service-db
+
+  dapp-auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8000"
+    environment:
+      - MODE=development
+    depends_on:
+      - dapp-auth-service-db
+      - dapp-kafka
+
+  dapp-auth-outbox-worker:
+    container_name: dapp-auth-outbox-worker
+    build:
+      context: ./auth-service
+      dockerfile: worker.Dockerfile
+    environment:
+      - MODE=development
+    depends_on:
+      - dapp-auth-service-db
+      - dapp-kafka
+
+  dapp-auth-service-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dapp_auth_service
+
+  dapp-store-api:
+    container_name: dapp-store-api
+    build:
+      context: ./store-service
+      dockerfile: api.Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - MODE=development
+    depends_on:
+      - dapp-store-service-db
+      - dapp-kafka
+
+  dapp-store-service-db:
+    container_name: dapp-store-service-db
+    image: postgis/postgis:17-3.6-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dapp_store_service
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=4
+      -c max_replication_slots=4
+
+  dapp-store-fuzzer:
+    container_name: dapp-store-fuzzer
+    build:
+      context: ./store-service
+      dockerfile: fuzzer.Dockerfile
+    environment:
+      - MODE=development
+    depends_on:
+      - dapp-store-service-db
+      - dapp-kafka
+
+  dapp-kafka:
+    image: apache/kafka-native:latest
+    container_name: dapp-kafka
+    # ports:
+    #   - "9092:9092"
+    environment:
+      # Configure listeners for both internal and external access
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://dapp-kafka:9092
+
+      # KRaft specific configurations
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@dapp-kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # Inter-broker security protocol
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Automatically create topics for testing
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+
+  dapp-kafka-connect:
+    image: debezium/connect:2.6
+    container_name: dapp-kafka-connect
+    depends_on:
+      - dapp-kafka
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: dapp-kafka:9092
+      GROUP_ID: "connect-cluster"
+
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+
+      CONNECT_PLUGIN_PATH: /kafka/connect
+
+  dapp-pgweb-client:
+    image: sosedoff/pgweb
+    ports:
+      - "8081:8081"
+
+  dapp-kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dapp-kafka
+    environment:
+      # Connection details for the native Kafka broker over the shared Docker network
+      DYNAMIC_CONFIG_ENABLED: "true"
+      KAFKA_CLUSTERS_0_NAME: native-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: dapp-kafka:9092
+
+  dapp-kafka-connect-setup:
+    container_name: dapp-kafka-connect-setup
+    build: ./debezium-connectors
+    depends_on:
+      - dapp-kafka-connect
+    environment:
+      - MODE=development
