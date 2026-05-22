@@ -1,0 +1,42 @@
+{
+  "name": "outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+
+    "database.hostname": "dapp-store-service-db",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "dapp_store_service",
+
+    "table.include.list": "public.outbox_events",
+
+    "topic.prefix": "dapp",
+    "plugin.name": "pgoutput",
+
+    "slot.name": "dapp_slot",
+    "publication.name": "dapp_publication",
+
+    "database.history.kafka.bootstrap.servers": "dapp-kafka:9092",
+    "database.history.kafka.topic": "schema-changes.dapp",
+
+    "tombstones.on.delete": "false",
+
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+
+    "transforms.outbox.table.field.event.id": "event_id",
+    "transforms.outbox.table.field.event.type": "event_type",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.payload": "payload",
+
+    "transforms.outbox.route.by.field": "aggregate_type",
+    "transforms.outbox.route.topic.replacement": "outbox.${routedByValue}",
+
+    "transforms.outbox.table.fields.additional.placement": "event_type:header:eventType",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}
