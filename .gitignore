@@ -1,0 +1,86 @@
+# ==========================================
+# 1. Environment & Secrets (Crucial)
+# ==========================================
+.env
+.env.*
+*.pem
+*.key
+*.secret
+
+# ==========================================
+# 2. IDE & Editor Specific
+# ==========================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# 3. Python Microservices (e.g., auth-service)
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Packaging, distribution, and isolation
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing and Coverage
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# ==========================================
+# 4. Java Microservices (Maven / Gradle)
+# ==========================================
+# Target directories (Maven)
+target/
+*.jar
+*.war
+*.ear
+
+# Gradle directories
+.gradle/
+build/
+
+# Crash dumps
+hs_err_pid*
+replay_pid*
+
+# ==========================================
+# 5. Microservices & Containerization (Optional but Recommended)
+# ==========================================
+# If you use Docker, ignore local database data dumps or temporary volumes
+.docker/

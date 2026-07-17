@@ -21,7 +21,7 @@ class ProductService:
             dto = ProductDTO.from_product_entity(product)
 
             # Create the outbox event
-            outbox_event = self.create_outbox_event("user.created", dto)
+            outbox_event = self.create_outbox_event("product.created", dto)
             self.session.add(outbox_event)
 
             return dto

@@ -1,4 +1,16 @@
 services:
+  dapp-nginx:
+    image: nginx:latest
+    container_name: gateway
+    ports:
+      - "9090:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    # depends_on:
+      # - dapp-auth-service
+      # - dapp-inventory-service
+    # networks:
+    #   - app_net
   dapp-product-service:
     build:
       context: ./product-service
@@ -39,6 +51,9 @@ services:
     depends_on:
       - dapp-auth-service-db
       - dapp-kafka
+    volumes:
+      - ./auth-service:/app               # Mounts your local code into the container
+      # - /app/.venv                         # Prevents host OS from overriding container dependencies
 
   dapp-auth-outbox-worker:
     container_name: dapp-auth-outbox-worker
@@ -50,6 +65,9 @@ services:
     depends_on:
       - dapp-auth-service-db
       - dapp-kafka
+    volumes:
+      - ./auth-service:/app               # Mounts your local code into the container
+      # - /app/.venv                         # Prevents host OS from overriding container dependencies
 
   dapp-auth-service-db:
     image: postgres:17-alpine
@@ -70,10 +88,14 @@ services:
     depends_on:
       - dapp-store-service-db
       - dapp-kafka
+    volumes:
+      - ./store-service:/app               # Mounts your local code into the container
+      - /app/.venv                         # Prevents host OS from overriding container dependencies
 
   dapp-store-service-db:
     container_name: dapp-store-service-db
     image: postgis/postgis:17-3.6-alpine
+    platform: linux/amd64
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -95,15 +117,89 @@ services:
       - dapp-store-service-db
       - dapp-kafka
 
+  dapp-inventory-service:
+    image: gradle:9.5-jdk26-alpine
+    container_name: inventory-service
+    ports:
+      - "8005:8000"
+    volumes:
+      # 1. Mounts your local project root into the container's working directory
+      - ./inventory-service:/app
+      # 2. Anonymous volume to prevent local .gradle cache overrides
+      # - /app/.gradle
+      # Caches downloaded dependency jars
+      - ~/.gradle:/home/gradle/.gradle
+    environment:
+      - MODE=development
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+    working_dir: /app
+    command: gradle bootRun --no-daemon
+    depends_on:
+      - dapp-inventory-service-db
+    
+  dapp-inventory-service-db:
+    container_name: dapp-inventory-service-db
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dapp_inventory_service
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=4
+      -c max_replication_slots=4
+  
+  dapp-profile-kafka-listener:
+    image: gradle:9.5-jdk21-alpine
+    container_name: dapp-profile-kafka-listener
+    volumes:
+      # 1. Mounts your local project root into the container's working directory
+      - ./profile-service:/app
+      # 2. Anonymous volume to prevent local .gradle cache overrides
+      # - /app/.gradle
+      # Caches downloaded dependency jars
+      - ~/.gradle:/home/gradle/.gradle
+      # 3. Prevent the container from writing target build files directly onto your host directory
+      - /app/.gradle                      # Overrides root .gradle
+      - /app/build                        # Overrides root build
+      # - /app/common/.gradle               # Overrides common module cache
+      - /app/common/build                 # Overrides common module build output
+      # - /app/kafka-listener/.gradle      # Overrides listener module cache
+      - /app/kafka-listener/build        # Overrides listener module build output
+    environment:
+      - MODE=development
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+    working_dir: /app
+    command: gradle :kafka-listener:bootRun --no-daemon
+    # command: gradle clean :kafka-listener:bootRun --no-daemon
+    depends_on:
+      - dapp-profile-service-db
+  
+  dapp-profile-service-db:
+    container_name: dapp-profile-service-db
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dapp_profile_service
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=4
+      -c max_replication_slots=4
+
   dapp-kafka:
     image: apache/kafka-native:latest
     container_name: dapp-kafka
-    # ports:
-    #   - "9092:9092"
+    ports:
+      - "29092:29092"
     environment:
       # Configure listeners for both internal and external access
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://dapp-kafka:9092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://dapp-kafka:9092,EXTERNAL://localhost:29092
 
       # KRaft specific configurations
       KAFKA_NODE_ID: 1
@@ -112,7 +208,7 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
 
       # Inter-broker security protocol
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
 
       # Automatically create topics for testing
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -134,6 +230,12 @@ services:
       CONFIG_STORAGE_TOPIC: connect-configs
       OFFSET_STORAGE_TOPIC: connect-offsets
       STATUS_STORAGE_TOPIC: connect-status
+
+      # FIX: Force compaction policies on internal topics
+      # CONFIG_STORAGE_CLEANUP_POLICY: compact
+      # OFFSET_STORAGE_CLEANUP_POLICY: compact
+      # # Status topic can be compact or delete, but compact is recommended
+      # STATUS_STORAGE_CLEANUP_POLICY: compact
 
       CONFIG_STORAGE_REPLICATION_FACTOR: 1
       OFFSET_STORAGE_REPLICATION_FACTOR: 1

@@ -1,17 +1,45 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
-from typing import Self
+from typing import Self, List
 
 from .schema import User, OutboxEvent
+
+
+class JWTPayload(BaseModel):
+    id: int
+    role: list[str]
+
+
+class AdminBasicLoginDTO(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=4, max_length=32)
 
 
 class UserDTO(BaseModel):
     id: int
     phone: str | None  # TODO Add E.164 validation
+    email: EmailStr | None
+    role: List[str]
 
     @classmethod
     def from_user_entity(cls, u: User) -> Self:
-        return cls(id=u.id, phone=u.phone)
+        return cls(
+            id=u.id, phone=u.phone, email=u.email, role=[r.name for r in u.roles]
+        )
+
+
+class AdminUserDTO(UserDTO):
+    hashed_password: str
+
+    @classmethod
+    def from_user_entity(cls, u: User) -> Self:
+        return cls(
+            id=u.id,
+            phone=u.phone,
+            email=u.email,
+            role=[r.name for r in u.roles],
+            hashed_password=u.basic_auth.hashed_password,
+        )
 
 
 class SendPhoneOtpDTO(BaseModel):
@@ -26,10 +54,12 @@ class VerifyPhoneOtpDTO(BaseModel):
 class UserCreatedOutboxEventPayloadDTO(BaseModel):
     id: int
     phone: str | None  # TODO Add E.164 validation
+    email: str | None
+    role: list[str]
 
     @classmethod
     def from_user_model(cls, u: UserDTO) -> Self:
-        return cls(id=u.id, phone=u.phone)
+        return cls(id=u.id, phone=u.phone, email=u.email, role=u.role)
 
 
 class OutboxEventDTO(BaseModel):

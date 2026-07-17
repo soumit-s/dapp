@@ -12,7 +12,7 @@ from .schema import Base
 
 
 async def lifespan(app: FastAPI):
-    if os.getenv("MODE", "producrion") == "development":
+    if os.getenv("MODE", "production") == "development":
         db = await get_db()
         async with db.get_async_engine().begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))

@@ -61,6 +61,8 @@ class OutboxWorker:
                                 "event_id": event.id,
                                 "event_type": event.event_type,
                                 "payload": event.payload,
+                                "aggregate_id": str(aggregate_id),
+                                "aggregate_type": "user",
                             }
                             logging.info("Proessing event: ")
                             logging.info(payload)

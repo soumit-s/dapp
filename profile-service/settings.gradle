@@ -1,0 +1,9 @@
+rootProject.name="profileservice"
+
+include('common', 'api', 'kafka-listener')
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}

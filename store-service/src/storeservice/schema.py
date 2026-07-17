@@ -1,11 +1,18 @@
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
 from sqlalchemy import func, text
-from sqlalchemy import DateTime, Integer, String, Boolean, Uuid, JSON
+from sqlalchemy import DateTime, Integer, String, Boolean, Uuid, JSON, SmallInteger
 from typing import Optional
 from datetime import datetime
 from geoalchemy2 import Geometry
+from enum import IntEnum
 
 import uuid
+
+
+class StoreStatus(IntEnum):
+    INACTIVE = 0  # Not accepting orders. Not supposed to appear in searches.
+    CLOSED = 1  # Temporarily not accepting orders
+    OPEN = 2  # Accepting orders
 
 
 class Base(DeclarativeBase):
@@ -26,7 +33,8 @@ class Store(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(
         "store_id", Integer, primary_key=True, autoincrement=True
     )
-    active: Mapped[bool] = mapped_column("active", Boolean)
+    # active: Mapped[bool] = mapped_column("active", Boolean)
+    status: Mapped[StoreStatus] = mapped_column("status", SmallInteger, default=StoreStatus.INACTIVE)
 
     name: Mapped[str] = mapped_column("name", String)
     description: Mapped[str] = mapped_column(

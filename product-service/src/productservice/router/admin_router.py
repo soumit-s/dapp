@@ -61,3 +61,52 @@ async def add_product_image(product_id: int):
 @router.put("/product/{product_id}/image")
 async def replace_product_image(product_id: int):
     pass
+
+
+
+# # Contains ADMIN role routes.
+# from fastapi import APIRouter, Query
+# from typing import Annotated
+# from ..models import GetProductsQueryDTO
+
+# # GET /api/v1/admin/products?page=<int>&limit=<int>&sort_by=<created_at, name>&order=<asc, desc>
+# # GET /api/v1/admin/products/:id # Get details of a specific product
+# # POST /api/v1/admin/products # Creates a new product
+# # POST /api/v1/admin/products/search # Semantic search over product
+# # PUT /api/v1/admin/products/:id # Replaces existing product
+
+# router = APIRouter()
+
+
+# @router.get("/admin/products")
+# async def get_products(query: Annotated[GetProductsQueryDTO, Query()]):
+#     pass
+
+# @router.get("/admin/products/{product_id}")
+# async def get_product(product_id: int):
+#     pass
+
+# @router.post("/admin/products")
+# async def create_product():
+#     """
+#     Creates a new product
+#     """
+#     pass
+
+# @router.post("/admin/products/search")
+# async def search_products():
+#     """
+#     Used to search products
+#     """
+#     pass
+
+# @router.put("/admin/products/{product_id}")
+# async def replace_product():
+#     pass
+
+
+# class GetProductsQueryDTO(BaseModel):
+#     page: int = Field(ge=1)
+#     limit: int = Field(ge=5, le=200)
+#     sort_by: Literal["name", "created_at"] | None
+#     order: Literal["asc", "desc"] | None

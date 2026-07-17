@@ -1,0 +1,15 @@
+# Build and IDE artifacts
+.gradle/
+build/
+.vscode/
+.settings/
+.project
+.classpath
+
+# Local development files
+bin/
+out/
+
+# OS-specific clutter
+.DS_Store
+Thumbs.db

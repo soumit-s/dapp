@@ -36,4 +36,4 @@ COPY . /app/
 EXPOSE 8000
 
 # Run FastAPI
-CMD ["fastapi", "run", "src/storeservice/api_app.py", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["fastapi", "dev", "src/storeservice/api_app.py", "--host", "0.0.0.0", "--port", "8000"]

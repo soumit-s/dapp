@@ -1,6 +1,8 @@
 from fastapi import Depends
 from typing import Annotated
 from sqlalchemy.ext.asyncio.session import async_sessionmaker, AsyncSession
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 
 from .db import async_engine, async_session_factory
 from .services import *
@@ -28,13 +30,46 @@ GetConfigDep = Depends(lambda: config)
 # GetRedisServiceDep = Depends(lambda: redis_service_singleton)
 
 
+async def get_password_service() -> PasswordService:
+    return PasswordService()
+
+
+GetPasswordServiceDep = Depends(get_password_service)
+
+
 async def get_jwt_service(config: Annotated[Config, GetConfigDep]):
-    return JWTService(config.jwt_secret)
+    return JWTService(config=config)
 
 
-async def get_user_service(session: Annotated[AsyncSession, GetDbAsyncSessionDep]):
-    return UserService(session)
+async def get_user_service(
+    session: Annotated[AsyncSession, GetDbAsyncSessionDep],
+    config: Annotated[Config, GetConfigDep],
+):
+    return UserService(session=session, config=config)
 
 
 GetJwtServiceDep = Depends(get_jwt_service)
 GetUserServiceDep = Depends(get_user_service)
+
+
+async def get_auth_service(
+    session: Annotated[AsyncSession, GetDbAsyncSessionDep],
+    jwt_service: Annotated[JWTService, GetJwtServiceDep],
+    user_service: Annotated[UserService, GetUserServiceDep],
+    password_service: Annotated[PasswordService, GetPasswordServiceDep],
+):
+    return AuthService(
+        session=session,
+        jwt_service=jwt_service,
+        user_service=user_service,
+        password_service=password_service,
+    )
+
+
+GetAuthServiceDep = Depends(get_auth_service)
+
+security = HTTPBearer()
+def get_bearer_token(creds: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    return creds.credentials
+
+GetBearerTokenDep = Depends(get_bearer_token)
